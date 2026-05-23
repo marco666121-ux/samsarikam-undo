@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as CommunitiesRouteImport } from './routes/communities'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostIdRouteImport } from './routes/post.$id'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
   '/post/$id': typeof PostIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
   '/post/$id': typeof PostIdRoute
 }
@@ -60,19 +68,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
   '/post/$id': typeof PostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/communities' | '/notifications' | '/c/$slug' | '/post/$id'
+  fullPaths:
+    | '/'
+    | '/communities'
+    | '/notifications'
+    | '/profile'
+    | '/c/$slug'
+    | '/post/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/communities' | '/notifications' | '/c/$slug' | '/post/$id'
+  to:
+    | '/'
+    | '/communities'
+    | '/notifications'
+    | '/profile'
+    | '/c/$slug'
+    | '/post/$id'
   id:
     | '__root__'
     | '/'
     | '/communities'
     | '/notifications'
+    | '/profile'
     | '/c/$slug'
     | '/post/$id'
   fileRoutesById: FileRoutesById
@@ -81,12 +103,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CommunitiesRoute: typeof CommunitiesRoute
   NotificationsRoute: typeof NotificationsRoute
+  ProfileRoute: typeof ProfileRoute
   CSlugRoute: typeof CSlugRoute
   PostIdRoute: typeof PostIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
@@ -129,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CommunitiesRoute: CommunitiesRoute,
   NotificationsRoute: NotificationsRoute,
+  ProfileRoute: ProfileRoute,
   CSlugRoute: CSlugRoute,
   PostIdRoute: PostIdRoute,
 }
