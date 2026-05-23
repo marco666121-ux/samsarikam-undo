@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CommunitiesRouteImport } from './routes/communities'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PostIdRouteImport } from './routes/post.$id'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 
 const CommunitiesRoute = CommunitiesRouteImport.update({
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostIdRoute = PostIdRouteImport.update({
+  id: '/post/$id',
+  path: '/post/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CSlugRoute = CSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
@@ -33,30 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/c/$slug': typeof CSlugRoute
+  '/post/$id': typeof PostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/c/$slug': typeof CSlugRoute
+  '/post/$id': typeof PostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/communities': typeof CommunitiesRoute
   '/c/$slug': typeof CSlugRoute
+  '/post/$id': typeof PostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/communities' | '/c/$slug'
+  fullPaths: '/' | '/communities' | '/c/$slug' | '/post/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/communities' | '/c/$slug'
-  id: '__root__' | '/' | '/communities' | '/c/$slug'
+  to: '/' | '/communities' | '/c/$slug' | '/post/$id'
+  id: '__root__' | '/' | '/communities' | '/c/$slug' | '/post/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CommunitiesRoute: typeof CommunitiesRoute
   CSlugRoute: typeof CSlugRoute
+  PostIdRoute: typeof PostIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/post/$id': {
+      id: '/post/$id'
+      path: '/post/$id'
+      fullPath: '/post/$id'
+      preLoaderRoute: typeof PostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/c/$slug': {
       id: '/c/$slug'
       path: '/c/$slug'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CommunitiesRoute: CommunitiesRoute,
   CSlugRoute: CSlugRoute,
+  PostIdRoute: PostIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
