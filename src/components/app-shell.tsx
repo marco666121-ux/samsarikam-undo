@@ -1,7 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Home, Compass, Plus, Bell, User, Search, Flame, Radio } from "lucide-react";
 import { useState } from "react";
 import { CreatePostModal } from "./create-post-modal";
+import { useStore } from "@/lib/store";
+import { toast } from "sonner";
+import { COMMUNITIES } from "@/lib/mock-data";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -29,6 +32,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 function TopBar({ onCompose }: { onCompose: () => void }) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim().toLowerCase();
+    if (!term) return;
+    const match = COMMUNITIES.find((c) => c.slug.includes(term) || c.name.toLowerCase().includes(term));
+    if (match) navigate({ to: "/c/$slug", params: { slug: match.slug } });
+    else { toast(`No community matches "${q}" — try /communities`); navigate({ to: "/communities" }); }
+  };
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 glass-strong">
       <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-3 py-3 md:px-6">
@@ -42,14 +55,16 @@ function TopBar({ onCompose }: { onCompose: () => void }) {
             <span className="text-[10px] text-muted-foreground">സംസാരിക്കാൻ ഉണ്ടോ?</span>
           </div>
         </Link>
-        <div className="relative ml-2 flex-1 max-w-xl">
+        <form onSubmit={onSearch} className="relative ml-2 flex-1 max-w-xl">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Search posts, communities, vibes..."
             className="w-full rounded-full border border-white/10 bg-surface/70 px-10 py-2.5 text-sm placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted-foreground md:block">⌘ K</kbd>
-        </div>
+        </form>
         <button
           onClick={onCompose}
           className="hidden items-center gap-2 rounded-full gradient-ember px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:scale-105 active:scale-95 md:inline-flex"
@@ -103,6 +118,7 @@ function LeftRail({ path }: { path: string }) {
 }
 
 function RightRail() {
+  const { identity, setIdentity } = useStore();
   return (
     <aside className="sticky top-20 hidden h-[calc(100vh-6rem)] w-72 shrink-0 flex-col gap-4 overflow-y-auto no-scrollbar xl:flex">
       <div className="glass rounded-2xl p-4">
@@ -123,8 +139,14 @@ function RightRail() {
         <p className="mb-3 text-xs text-muted-foreground">
           Anonymous mode is on by default. Be kind. Be unhinged. Be naadan.
         </p>
-        <button className="w-full rounded-xl gradient-ember py-2 text-sm font-semibold text-primary-foreground glow-ember">
-          Continue as Ghost 👻
+        <button
+          onClick={() => {
+            setIdentity({ username: identity.ghost ? "TeaConnoisseur" : "Ghost", ghost: !identity.ghost });
+            toast.success(identity.ghost ? "Welcome, TeaConnoisseur ☕" : "Now browsing as Ghost 👻");
+          }}
+          className="w-full rounded-xl gradient-ember py-2 text-sm font-semibold text-primary-foreground glow-ember"
+        >
+          {identity.ghost ? "Continue as Ghost 👻" : "Switch back to Ghost 👻"}
         </button>
       </div>
     </aside>
