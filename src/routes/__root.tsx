@@ -84,6 +84,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Samsarikan Undo? — Kerala's anonymous social space" },
       { name: "twitter:description", content: "സംസാരിക്കാൻ ഉണ്ടോ? Kerala's Reddit-style anonymous platform — confessions, memes, communities, live rooms, midnight thoughts. Malayalam-first, Gen Z native." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a4c7944a-bf96-458a-880f-f427979d47d2" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a4c7944a-bf96-458a-880f-f427979d47d2" },
     ],
     links: [
       {
