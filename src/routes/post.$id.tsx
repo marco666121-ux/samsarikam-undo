@@ -1,7 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { COMMENTS, POSTS, type Comment } from "@/lib/mock-data";
+import { POSTS, type Comment } from "@/lib/mock-data";
+import { useStore } from "@/lib/store";
+import { useState } from "react";
+import { toast } from "sonner";
 import { ArrowLeft, MessageCircle, Pin, Send, Smile } from "lucide-react";
 
 export const Route = createFileRoute("/post/$id")({
@@ -17,9 +20,8 @@ export const Route = createFileRoute("/post/$id")({
     };
   },
   loader: ({ params }) => {
-    const p = POSTS.find((x) => x.id === params.id);
-    if (!p) throw notFound();
-    return p;
+    // Just validate seed posts here; user-created posts are validated in component via store
+    return { id: params.id };
   },
   component: PostPage,
   notFoundComponent: () => (
@@ -39,7 +41,34 @@ export const Route = createFileRoute("/post/$id")({
 });
 
 function PostPage() {
-  const post = Route.useLoaderData();
+  const { id } = Route.useLoaderData();
+  const { posts, comments, addComment, voteComment, commentVotes } = useStore();
+  const post = posts.find((p) => p.id === id);
+  const [draft, setDraft] = useState("");
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+
+  if (!post) {
+    // user-created post not hydrated yet OR truly missing
+    return (
+      <AppShell>
+        <div className="py-20 text-center">
+          <div className="text-5xl">🫠</div>
+          <h2 className="mt-4 font-display text-xl font-bold">Post not found</h2>
+          <Link to="/" className="mt-3 inline-block text-sm text-primary hover:underline">Back to feed →</Link>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const list = comments[post.id] ?? [];
+
+  const submitComment = () => {
+    if (!draft.trim()) return;
+    addComment(post.id, draft.trim(), replyTo ?? undefined);
+    toast.success(replyTo ? "Reply posted" : "Comment posted");
+    setDraft(""); setReplyTo(null);
+  };
+
   return (
     <AppShell>
       <Link to="/" className="mb-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
@@ -51,18 +80,25 @@ function PostPage() {
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full gradient-ember text-sm font-bold text-primary-foreground">T</div>
           <div className="flex-1">
+            {replyTo && (
+              <div className="mb-1.5 text-[11px] text-muted-foreground">
+                Replying… <button onClick={() => setReplyTo(null)} className="text-primary hover:underline">cancel</button>
+              </div>
+            )}
             <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               rows={2}
               placeholder="Add to the conversation… (markdown, GIF, voice)"
               className="w-full resize-none rounded-xl border border-white/10 bg-surface/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
             />
             <div className="mt-2 flex items-center justify-between">
               <div className="flex gap-1 text-muted-foreground">
-                <button className="rounded-full p-1.5 hover:bg-white/10"><Smile className="h-4 w-4" /></button>
-                <button className="rounded-full p-1.5 text-[11px] font-bold hover:bg-white/10">GIF</button>
-                <button className="rounded-full p-1.5 text-[11px] font-bold hover:bg-white/10">🎙️</button>
+                <button onClick={() => setDraft((d) => d + " 😂")} className="rounded-full p-1.5 hover:bg-white/10"><Smile className="h-4 w-4" /></button>
+                <button onClick={() => setDraft((d) => d + " [GIF]")} className="rounded-full p-1.5 text-[11px] font-bold hover:bg-white/10">GIF</button>
+                <button onClick={() => toast("Voice comments coming soon 🎙️")} className="rounded-full p-1.5 text-[11px] font-bold hover:bg-white/10">🎙️</button>
               </div>
-              <button className="flex items-center gap-1.5 rounded-full gradient-ember px-4 py-1.5 text-xs font-bold text-primary-foreground glow-ember">
+              <button onClick={submitComment} className="flex items-center gap-1.5 rounded-full gradient-ember px-4 py-1.5 text-xs font-bold text-primary-foreground glow-ember active:scale-95">
                 Comment <Send className="h-3 w-3" />
               </button>
             </div>
@@ -83,13 +119,17 @@ function PostPage() {
       </div>
 
       <div className="space-y-2">
-        {COMMENTS.map((c) => <CommentNode key={c.id} comment={c} depth={0} />)}
+        {list.length === 0 && (
+          <div className="rounded-2xl glass p-6 text-center text-sm text-muted-foreground">Be the first to comment 👻</div>
+        )}
+        {list.map((c) => <CommentNode key={c.id} comment={c} depth={0} onReply={setReplyTo} voteComment={voteComment} commentVotes={commentVotes} />)}
       </div>
     </AppShell>
   );
 }
 
-function CommentNode({ comment, depth }: { comment: Comment; depth: number }) {
+function CommentNode({ comment, depth, onReply, voteComment, commentVotes }: { comment: Comment; depth: number; onReply: (id: string) => void; voteComment: (id: string, dir: 1 | -1) => void; commentVotes: Record<string, 1 | -1 | 0> }) {
+  const myVote = commentVotes[comment.id] ?? 0;
   const lineColors = ["border-primary/40", "border-ember/40", "border-rose-400/30", "border-amber-400/30"];
   return (
     <div className={`glass rounded-2xl p-3 ${comment.pinned ? "border-ember/30 bg-ember/5" : ""} animate-float-up`}>
@@ -105,17 +145,17 @@ function CommentNode({ comment, depth }: { comment: Comment; depth: number }) {
           </div>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-foreground/95">{comment.body}</p>
           <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <button className="rounded p-1 hover:bg-white/10 hover:text-primary">▲</button>
-            <span className="font-semibold">{comment.upvotes.toLocaleString()}</span>
-            <button className="rounded p-1 hover:bg-white/10">▼</button>
-            <button className="ml-2 rounded-full px-2 py-0.5 hover:bg-white/5">Reply</button>
+            <button onClick={() => voteComment(comment.id, 1)} className={`rounded p-1 hover:bg-white/10 hover:text-primary ${myVote === 1 ? "text-primary" : ""}`}>▲</button>
+            <span className={`font-semibold ${myVote === 1 ? "text-primary" : myVote === -1 ? "text-destructive" : ""}`}>{(comment.upvotes + myVote).toLocaleString()}</span>
+            <button onClick={() => voteComment(comment.id, -1)} className={`rounded p-1 hover:bg-white/10 ${myVote === -1 ? "text-destructive" : ""}`}>▼</button>
+            <button onClick={() => onReply(comment.id)} className="ml-2 rounded-full px-2 py-0.5 hover:bg-white/5">Reply</button>
             <button className="rounded-full px-2 py-0.5 hover:bg-white/5">🔥</button>
             <button className="rounded-full px-2 py-0.5 hover:bg-white/5">💀</button>
             <button className="rounded-full px-2 py-0.5 hover:bg-white/5">🫂</button>
           </div>
           {comment.replies && comment.replies.length > 0 && (
             <div className={`mt-2 space-y-2 border-l-2 pl-3 ${lineColors[depth % lineColors.length]}`}>
-              {comment.replies.map((r) => <CommentNode key={r.id} comment={r} depth={depth + 1} />)}
+              {comment.replies.map((r) => <CommentNode key={r.id} comment={r} depth={depth + 1} onReply={onReply} voteComment={voteComment} commentVotes={commentVotes} />)}
             </div>
           )}
         </div>
