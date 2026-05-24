@@ -45,7 +45,7 @@ export type Post = {
   type: "text" | "image" | "poll" | "voice" | "meme" | "confession";
   image?: string;
   poll?: { option: string; votes: number }[];
-  voice?: { duration: number };
+  voice?: { duration: number; src?: string };
   upvotes: number;
   comments: number;
   reactions: Partial<Record<Reaction, number>>;
