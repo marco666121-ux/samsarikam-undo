@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { COMMUNITIES, POSTS } from "@/lib/mock-data";
+import { COMMUNITIES } from "@/lib/mock-data";
+import { useStore } from "@/lib/store";
 import { Bell, Settings, Users } from "lucide-react";
 
 export const Route = createFileRoute("/c/$slug")({
@@ -40,7 +41,8 @@ export const Route = createFileRoute("/c/$slug")({
 
 function CommunityPage() {
   const c = Route.useLoaderData();
-  const posts = POSTS.filter((p) => p.community === c.slug);
+  const { posts: all } = useStore();
+  const posts = all.filter((p) => p.community === c.slug);
   return (
     <AppShell>
       <div className="relative mb-4 overflow-hidden rounded-3xl">

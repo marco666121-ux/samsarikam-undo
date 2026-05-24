@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { MessageCircle, Share2, Bookmark, MoreHorizontal, ArrowUp, ArrowDown, Play, Pin } from "lucide-react";
+import { MessageCircle, Share2, Bookmark, MoreHorizontal, ArrowUp, ArrowDown, Play, Pause, Pin } from "lucide-react";
 import { type Post, REACTIONS, COMMUNITIES } from "@/lib/mock-data";
+import { useStore } from "@/lib/store";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 const GRADIENTS: Record<string, string> = {
   "gradient-1": "linear-gradient(135deg, oklch(0.45 0.2 30), oklch(0.7 0.2 60))",
@@ -11,6 +14,23 @@ export function PostCard({ post }: { post: Post }) {
   const community = COMMUNITIES.find((c) => c.slug === post.community);
   const reactionEntries = Object.entries(post.reactions ?? {}) as [import("@/lib/mock-data").Reaction, number][];
   const topReactions = reactionEntries.sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const { vote, react, toggleSave, votePoll, votes, userReactions, saved, pollVotes } = useStore();
+  const myVote = votes[post.id] ?? 0;
+  const myReaction = userReactions[post.id] ?? null;
+  const isSaved = !!saved[post.id];
+  const myPoll = pollVotes[post.id];
+
+  const onShare = async () => {
+    const url = typeof window !== "undefined" ? `${window.location.origin}/post/${post.id}` : "";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: post.title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied");
+      }
+    } catch {}
+  };
 
   return (
     <article className="group relative overflow-hidden rounded-2xl glass transition hover:border-primary/30 hover:shadow-card animate-float-up">
@@ -22,12 +42,20 @@ export function PostCard({ post }: { post: Post }) {
       <div className="flex gap-3 p-4">
         {/* Vote rail */}
         <div className="flex flex-col items-center gap-1 text-xs">
-          <button className="rounded-md p-1 text-muted-foreground transition hover:bg-primary/10 hover:text-primary">
-            <ArrowUp className="h-4 w-4" />
+          <button
+            onClick={() => vote(post.id, 1)}
+            className={`rounded-md p-1 transition hover:bg-primary/10 ${myVote === 1 ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            aria-label="Upvote"
+          >
+            <ArrowUp className="h-4 w-4" fill={myVote === 1 ? "currentColor" : "none"} />
           </button>
-          <span className="font-bold text-foreground">{formatK(post.upvotes)}</span>
-          <button className="rounded-md p-1 text-muted-foreground transition hover:bg-white/10">
-            <ArrowDown className="h-4 w-4" />
+          <span className={`font-bold ${myVote === 1 ? "text-primary" : myVote === -1 ? "text-destructive" : "text-foreground"}`}>{formatK(post.upvotes)}</span>
+          <button
+            onClick={() => vote(post.id, -1)}
+            className={`rounded-md p-1 transition hover:bg-white/10 ${myVote === -1 ? "text-destructive" : "text-muted-foreground"}`}
+            aria-label="Downvote"
+          >
+            <ArrowDown className="h-4 w-4" fill={myVote === -1 ? "currentColor" : "none"} />
           </button>
         </div>
 
@@ -68,34 +96,31 @@ export function PostCard({ post }: { post: Post }) {
             </div>
           )}
 
-          {post.type === "voice" && post.voice && (
-            <div className="mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-              <button className="grid h-10 w-10 place-items-center rounded-full gradient-ember glow-ember">
-                <Play className="h-4 w-4 text-primary-foreground" fill="currentColor" />
-              </button>
-              <Waveform />
-              <span className="text-xs font-mono text-muted-foreground">0:{String(post.voice.duration).padStart(2, "0")}</span>
-            </div>
-          )}
+          {post.type === "voice" && post.voice && <VoicePlayer src={post.voice.src} duration={post.voice.duration} />}
 
           {post.type === "poll" && post.poll && (
             <div className="mt-3 space-y-2">
               {(() => {
-                const total = post.poll.reduce((s, o) => s + o.votes, 0);
+                const total = Math.max(1, post.poll.reduce((s, o) => s + o.votes, 0));
                 return post.poll.map((o, i) => {
                   const pct = Math.round((o.votes / total) * 100);
+                  const picked = myPoll === i;
                   return (
-                    <button key={i} className="group/poll relative w-full overflow-hidden rounded-lg border border-white/10 bg-surface px-3 py-2 text-left text-sm">
+                    <button
+                      key={i}
+                      onClick={(e) => { e.preventDefault(); votePoll(post.id, i); }}
+                      className={`group/poll relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition ${picked ? "border-primary/60 bg-primary/10" : "border-white/10 bg-surface hover:border-primary/30"}`}
+                    >
                       <div className="absolute inset-y-0 left-0 gradient-ember opacity-20" style={{ width: `${pct}%` }} />
                       <div className="relative flex items-center justify-between">
-                        <span>{o.option}</span>
+                        <span>{picked ? "✓ " : ""}{o.option}</span>
                         <span className="text-xs font-bold text-ember">{pct}%</span>
                       </div>
                     </button>
                   );
                 });
               })()}
-              <div className="text-[11px] text-muted-foreground">{formatK(post.poll.reduce((s, o) => s + o.votes, 0))} votes</div>
+              <div className="text-[11px] text-muted-foreground">{formatK(post.poll.reduce((s, o) => s + o.votes, 0))} votes{myPoll != null ? " · you voted" : ""}</div>
             </div>
           )}
 
@@ -125,15 +150,23 @@ export function PostCard({ post }: { post: Post }) {
             <Link to="/post/$id" params={{ id: post.id }} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 hover:bg-white/5">
               <MessageCircle className="h-3.5 w-3.5" /> {formatK(post.comments)}
             </Link>
-            <button className="flex items-center gap-1.5 rounded-full px-3 py-1.5 hover:bg-white/5">
+            <button onClick={onShare} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 hover:bg-white/5">
               <Share2 className="h-3.5 w-3.5" /> Share
             </button>
-            <button className="flex items-center gap-1.5 rounded-full px-3 py-1.5 hover:bg-white/5">
-              <Bookmark className="h-3.5 w-3.5" /> Save
+            <button
+              onClick={() => { toggleSave(post.id); toast(isSaved ? "Removed from saved" : "Saved 🔖"); }}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 hover:bg-white/5 ${isSaved ? "text-ember" : ""}`}
+            >
+              <Bookmark className="h-3.5 w-3.5" fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Saved" : "Save"}
             </button>
             <div className="ml-auto hidden gap-1 sm:flex">
               {REACTIONS.map((r) => (
-                <button key={r.key} title={r.label} className="grid h-7 w-7 place-items-center rounded-full transition hover:bg-white/10 hover:scale-125 active:scale-90">
+                <button
+                  key={r.key}
+                  title={r.label}
+                  onClick={() => react(post.id, r.key)}
+                  className={`grid h-7 w-7 place-items-center rounded-full transition hover:bg-white/10 hover:scale-125 active:scale-90 ${myReaction === r.key ? "bg-primary/20 ring-1 ring-primary scale-110" : ""}`}
+                >
                   <span>{r.emoji}</span>
                 </button>
               ))}
@@ -145,15 +178,48 @@ export function PostCard({ post }: { post: Post }) {
   );
 }
 
-function Waveform() {
+function VoicePlayer({ src, duration }: { src?: string; duration: number }) {
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!src) return;
+    const a = new Audio(src);
+    audioRef.current = a;
+    a.ontimeupdate = () => setPos(a.currentTime);
+    a.onended = () => { setPlaying(false); setPos(0); };
+    return () => { a.pause(); audioRef.current = null; };
+  }, [src]);
+
+  const toggle = () => {
+    if (!src) { toast("Demo voice post — no audio attached"); return; }
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); }
+  };
+
+  const shown = src ? Math.floor(pos) : 0;
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+      <button onClick={toggle} className="grid h-10 w-10 place-items-center rounded-full gradient-ember glow-ember active:scale-95">
+        {playing ? <Pause className="h-4 w-4 text-primary-foreground" fill="currentColor" /> : <Play className="h-4 w-4 text-primary-foreground" fill="currentColor" />}
+      </button>
+      <Waveform active={playing} />
+      <span className="text-xs font-mono text-muted-foreground">0:{String(shown || duration).padStart(2, "0")}</span>
+    </div>
+  );
+}
+
+function Waveform({ active = false }: { active?: boolean }) {
   const bars = [6, 12, 18, 14, 22, 10, 16, 24, 12, 20, 8, 14, 22, 18, 10, 16, 12, 20, 14, 8];
   return (
     <div className="flex h-8 flex-1 items-center gap-0.5">
       {bars.map((h, i) => (
         <span
           key={i}
-          className="w-0.5 rounded-full bg-gradient-to-t from-primary to-ember"
-          style={{ height: `${h}px`, opacity: 0.4 + (i / bars.length) * 0.6 }}
+          className={`w-0.5 rounded-full bg-gradient-to-t from-primary to-ember ${active ? "animate-pulse" : ""}`}
+          style={{ height: `${h}px`, opacity: 0.4 + (i / bars.length) * 0.6, animationDelay: `${i * 60}ms` }}
         />
       ))}
     </div>

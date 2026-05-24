@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { LIVE_ROOMS, POSTS, TRENDING_TAGS } from "@/lib/mock-data";
+import { LIVE_ROOMS, TRENDING_TAGS } from "@/lib/mock-data";
+import { useStore } from "@/lib/store";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Flame, Radio, Sparkles, TrendingUp, Users } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -23,18 +26,37 @@ const FILTERS = [
   { key: "nearby", label: "Nearby", icon: Users },
 ] as const;
 
+type FilterKey = typeof FILTERS[number]["key"];
+
 function Index() {
+  const { posts } = useStore();
+  const [filter, setFilter] = useState<FilterKey>("hot");
+  const [tag, setTag] = useState<string | null>(null);
+  const [visible, setVisible] = useState(10);
+
+  const list = useMemo(() => {
+    let l = [...posts];
+    if (tag) l = l.filter((p) => p.tags?.includes(tag.replace(/^#/, "")));
+    if (filter === "new") l.sort((a, b) => (a.age === "now" ? -1 : b.age === "now" ? 1 : 0));
+    else if (filter === "trending") l.sort((a, b) => b.comments - a.comments);
+    else if (filter === "hot") l.sort((a, b) => b.upvotes - a.upvotes);
+    return l;
+  }, [posts, filter, tag]);
+
   return (
     <AppShell>
       <Hero />
       <LiveStrip />
-      <FilterBar />
-      <TagPills />
+      <FilterBar value={filter} onChange={setFilter} />
+      <TagPills value={tag} onChange={setTag} />
       <div className="mt-4 space-y-3">
-        {POSTS.map((p) => (
+        {list.slice(0, visible).map((p) => (
           <PostCard key={p.id} post={p} />
         ))}
-        <LoadMore />
+        {list.length === 0 && (
+          <div className="rounded-2xl glass p-8 text-center text-sm text-muted-foreground">No posts match this filter.</div>
+        )}
+        <LoadMore canLoad={visible < list.length} onLoad={() => setVisible((v) => v + 10)} />
       </div>
     </AppShell>
   );
@@ -91,7 +113,7 @@ function LiveStrip() {
                     {h.startsWith("+") ? h : h[0]}
                   </span>
                 ))}
-                <button className="ml-auto rounded-full gradient-ember px-2.5 py-1 text-[10px] font-bold text-primary-foreground">Join</button>
+                <button onClick={() => toast(`Joining ${r.title}… 🎙️`)} className="ml-auto rounded-full gradient-ember px-2.5 py-1 text-[10px] font-bold text-primary-foreground">Join</button>
               </div>
             </div>
           </div>
@@ -101,14 +123,15 @@ function LiveStrip() {
   );
 }
 
-function FilterBar() {
+function FilterBar({ value, onChange }: { value: FilterKey; onChange: (k: FilterKey) => void }) {
   return (
     <div className="sticky top-[68px] z-30 -mx-3 mb-3 flex gap-1 overflow-x-auto border-y border-white/5 bg-background/70 px-3 py-2 backdrop-blur-md no-scrollbar md:mx-0 md:rounded-2xl md:border-x">
-      {FILTERS.map(({ key, label, icon: Icon }, i) => (
+      {FILTERS.map(({ key, label, icon: Icon }) => (
         <button
           key={key}
+          onClick={() => onChange(key)}
           className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-            i === 0 ? "gradient-ember text-primary-foreground glow-ember" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+            value === key ? "gradient-ember text-primary-foreground glow-ember" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
           }`}
         >
           <Icon className="h-3.5 w-3.5" /> {label}
@@ -121,24 +144,35 @@ function FilterBar() {
   );
 }
 
-function TagPills() {
+function TagPills({ value, onChange }: { value: string | null; onChange: (t: string | null) => void }) {
   return (
     <div className="mb-1 flex flex-wrap gap-1.5">
       {TRENDING_TAGS.map((t) => (
-        <button key={t} className="rounded-full border border-white/10 bg-surface/50 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary">
+        <button
+          key={t}
+          onClick={() => onChange(value === t ? null : t)}
+          className={`rounded-full border px-3 py-1 text-xs transition ${value === t ? "border-primary bg-primary/20 text-primary" : "border-white/10 bg-surface/50 text-muted-foreground hover:border-primary/40 hover:text-primary"}`}
+        >
           {t}
         </button>
       ))}
+      {value && (
+        <button onClick={() => onChange(null)} className="rounded-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground">clear ✕</button>
+      )}
     </div>
   );
 }
 
-function LoadMore() {
+function LoadMore({ canLoad, onLoad }: { canLoad: boolean; onLoad: () => void }) {
   return (
     <div className="py-8 text-center">
-      <button className="rounded-full border border-white/10 bg-surface/50 px-6 py-2 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary">
-        Load more posts
-      </button>
+      {canLoad ? (
+        <button onClick={onLoad} className="rounded-full border border-white/10 bg-surface/50 px-6 py-2 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary">
+          Load more posts
+        </button>
+      ) : (
+        <span className="text-sm text-muted-foreground">That's all for now ☕</span>
+      )}
       <p className="mt-3 text-[11px] text-muted-foreground/60">
         You scrolled to the bottom of the internet. Aano? 👀
       </p>
