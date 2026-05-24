@@ -76,12 +76,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "സംസാരിക്കാൻ ഉണ്ടോ? Kerala's Reddit-style anonymous platform — confessions, memes, communities, live rooms, midnight thoughts. Malayalam-first, Gen Z native." },
       { name: "author", content: "Samsarikan Undo?" },
       { name: "theme-color", content: "#0b0908" },
-      { property: "og:title", content: "Samsarikan Undo? — സംസാരിക്കാൻ ഉണ്ടോ?" },
-      { property: "og:description", content: "Kerala's anonymous social platform. Confessions, memes, naatile tea, midnight thoughts." },
+      { property: "og:title", content: "Samsarikan Undo? — Kerala's anonymous social space" },
+      { property: "og:description", content: "സംസാരിക്കാൻ ഉണ്ടോ? Kerala's Reddit-style anonymous platform — confessions, memes, communities, live rooms, midnight thoughts. Malayalam-first, Gen Z native." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Samsarikan Undo?" },
-      { name: "twitter:description", content: "Kerala's anonymous Reddit. Mass adi by day, ayyo by night." },
+      { name: "twitter:title", content: "Samsarikan Undo? — Kerala's anonymous social space" },
+      { name: "twitter:description", content: "സംസാരിക്കാൻ ഉണ്ടോ? Kerala's Reddit-style anonymous platform — confessions, memes, communities, live rooms, midnight thoughts. Malayalam-first, Gen Z native." },
     ],
     links: [
       {
