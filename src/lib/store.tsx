@@ -97,18 +97,6 @@ function nestComments(rows: any[]): Comment[] {
   return roots;
 }
 
-const initialState = (): State => ({
-  posts: POSTS,
-  comments: { p1: COMMENTS },
-  votes: {},
-  commentVotes: {},
-  userReactions: {},
-  saved: {},
-  pollVotes: {},
-  notifications: NOTIFICATIONS,
-  identity: { username: "Ghost", ghost: true },
-});
-
 type Ctx = State & {
   vote: (postId: string, dir: 1 | -1) => void;
   voteComment: (commentId: string, dir: 1 | -1) => void;
