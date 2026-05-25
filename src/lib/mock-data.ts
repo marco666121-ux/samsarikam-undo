@@ -12,12 +12,12 @@ export const REACTIONS: { key: Reaction; emoji: string; label: string }[] = [
 export type Community = {
   slug: string;
   name: string;
-  malayalam: string;
-  members: number;
-  online: number;
-  description: string;
-  color: string;
-  icon: string;
+  malayalam: string | null;
+  members?: number;
+  online?: number;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
 };
 
 export const COMMUNITIES: Community[] = [
