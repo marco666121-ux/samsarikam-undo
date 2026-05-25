@@ -82,7 +82,7 @@ export const adminEditPost = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ id: z.string().uuid(), title: z.string().min(1).max(280).optional(), body: z.string().max(8000).nullable().optional() }).parse(d))
   .handler(async ({ data }) => {
     requireAdmin();
-    const patch: Record<string, any> = {};
+    const patch: { title?: string; body?: string | null } = {};
     if (data.title !== undefined) patch.title = data.title;
     if (data.body !== undefined) patch.body = data.body;
     await supabaseAdmin.from("posts").update(patch).eq("id", data.id);
