@@ -40,17 +40,18 @@ export type Post = {
   anonymous: boolean;
   age: string;
   title: string;
-  body?: string;
+  body?: string | null;
   tags?: string[];
   type: "text" | "image" | "poll" | "voice" | "meme" | "confession";
-  image?: string;
-  poll?: { option: string; votes: number }[];
-  voice?: { duration: number; src?: string };
+  image?: string | null;
+  poll?: { option: string; votes: number }[] | null;
+  voice?: { duration: number; src?: string } | null;
   upvotes: number;
   comments: number;
   reactions: Partial<Record<Reaction, number>>;
   nsfw?: boolean;
   pinned?: boolean;
+  created_at?: string;
 };
 
 export const POSTS: Post[] = [
