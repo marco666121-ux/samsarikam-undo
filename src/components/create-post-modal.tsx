@@ -42,7 +42,7 @@ export function CreatePostModal({ open, onOpenChange }: { open: boolean; onOpenC
     reader.readAsDataURL(f);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim()) { toast.error("Title required"); return; }
     const tagList = tags.split(/[,\s]+/).map((t) => t.replace(/^#/, "")).filter(Boolean);
     let voice: { duration: number; src?: string } | undefined;
@@ -62,7 +62,7 @@ export function CreatePostModal({ open, onOpenChange }: { open: boolean; onOpenC
       image = imageData;
     }
     const type = tab === "image" ? "meme" : tab === "voice" ? "voice" : tab === "poll" ? "poll" : "text";
-    const post = addPost({
+    const post = await addPost({
       community, title: title.trim(), body: body.trim() || undefined, type,
       anonymous: anon, nsfw, tags: tagList.length ? tagList : undefined,
       voice, poll, image,

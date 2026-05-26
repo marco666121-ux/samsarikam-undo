@@ -53,9 +53,9 @@ function Communities() {
                 </div>
                 <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
                 <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {(c.members / 1000).toFixed(1)}k members</span>
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {((c.members ?? 0) / 1000).toFixed(1)}k members</span>
                   <span className="flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> {c.online} online
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> {c.online ?? 0} online
                   </span>
                 </div>
               </div>
