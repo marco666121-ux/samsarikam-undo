@@ -13,7 +13,10 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as CommunitiesRouteImport } from './routes/communities'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as RoomIdRouteImport } from './routes/room.$id'
 import { Route as PostIdRouteImport } from './routes/post.$id'
+import { Route as ConfessionIdRouteImport } from './routes/confession.$id'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 
 const ProfileRoute = ProfileRouteImport.update({
@@ -36,9 +39,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoomIdRoute = RoomIdRouteImport.update({
+  id: '/room/$id',
+  path: '/room/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostIdRoute = PostIdRouteImport.update({
   id: '/post/$id',
   path: '/post/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfessionIdRoute = ConfessionIdRouteImport.update({
+  id: '/confession/$id',
+  path: '/confession/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CSlugRoute = CSlugRouteImport.update({
@@ -53,7 +71,10 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
+  '/confession/$id': typeof ConfessionIdRoute
   '/post/$id': typeof PostIdRoute
+  '/room/$id': typeof RoomIdRoute
+  '/u/$username': typeof UUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +82,10 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
+  '/confession/$id': typeof ConfessionIdRoute
   '/post/$id': typeof PostIdRoute
+  '/room/$id': typeof RoomIdRoute
+  '/u/$username': typeof UUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,7 +94,10 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/c/$slug': typeof CSlugRoute
+  '/confession/$id': typeof ConfessionIdRoute
   '/post/$id': typeof PostIdRoute
+  '/room/$id': typeof RoomIdRoute
+  '/u/$username': typeof UUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +107,10 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/c/$slug'
+    | '/confession/$id'
     | '/post/$id'
+    | '/room/$id'
+    | '/u/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +118,10 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/c/$slug'
+    | '/confession/$id'
     | '/post/$id'
+    | '/room/$id'
+    | '/u/$username'
   id:
     | '__root__'
     | '/'
@@ -96,7 +129,10 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/c/$slug'
+    | '/confession/$id'
     | '/post/$id'
+    | '/room/$id'
+    | '/u/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,7 +141,10 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   CSlugRoute: typeof CSlugRoute
+  ConfessionIdRoute: typeof ConfessionIdRoute
   PostIdRoute: typeof PostIdRoute
+  RoomIdRoute: typeof RoomIdRoute
+  UUsernameRoute: typeof UUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -138,11 +177,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/room/$id': {
+      id: '/room/$id'
+      path: '/room/$id'
+      fullPath: '/room/$id'
+      preLoaderRoute: typeof RoomIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/post/$id': {
       id: '/post/$id'
       path: '/post/$id'
       fullPath: '/post/$id'
       preLoaderRoute: typeof PostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confession/$id': {
+      id: '/confession/$id'
+      path: '/confession/$id'
+      fullPath: '/confession/$id'
+      preLoaderRoute: typeof ConfessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/c/$slug': {
@@ -161,8 +221,21 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   CSlugRoute: CSlugRoute,
+  ConfessionIdRoute: ConfessionIdRoute,
   PostIdRoute: PostIdRoute,
+  RoomIdRoute: RoomIdRoute,
+  UUsernameRoute: UUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

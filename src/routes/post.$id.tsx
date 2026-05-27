@@ -1,27 +1,44 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { POSTS, type Comment } from "@/lib/mock-data";
+import { type Comment } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, MessageCircle, Pin, Send, Smile } from "lucide-react";
+import { getPostMeta } from "@/lib/post-fetch.functions";
+import { SITE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/post/$id")({
-  head: ({ params }) => {
-    const p = POSTS.find((x) => x.id === params.id);
+  head: (ctx: any) => {
+    const params = ctx.params as { id: string };
+    const p = ctx.loaderData?.post as { title: string; body: string | null; image: string | null } | undefined;
+    const url = `${SITE_URL}/post/${params.id}`;
+    const title = p?.title ? `${p.title} — Samsarikan Undo?` : "Post — Samsarikan Undo?";
+    const desc = (p?.body?.slice(0, 200) ?? p?.title ?? "Read the conversation on Samsarikan Undo?");
+    const meta: Array<Record<string, string>> = [
+      { title },
+      { name: "description", content: desc },
+      { property: "og:title", content: p?.title ?? "Samsarikan Undo?" },
+      { property: "og:description", content: desc },
+      { property: "og:url", content: url },
+      { property: "og:type", content: "article" },
+      { name: "twitter:card", content: p?.image ? "summary_large_image" : "summary" },
+      { name: "twitter:title", content: p?.title ?? "Samsarikan Undo?" },
+      { name: "twitter:description", content: desc },
+    ];
+    if (p?.image) {
+      meta.push({ property: "og:image", content: p.image });
+      meta.push({ name: "twitter:image", content: p.image });
+    }
     return {
-      meta: [
-        { title: `${p?.title ?? "Post"} — Samsarikan Undo?` },
-        { name: "description", content: p?.body?.slice(0, 150) ?? p?.title ?? "" },
-        { property: "og:title", content: p?.title ?? "Samsarikan Undo?" },
-        { property: "og:description", content: (p?.body ?? "Read the conversation").slice(0, 200) },
-      ],
+      meta,
+      links: [{ rel: "canonical", href: url }],
     };
   },
-  loader: ({ params }) => {
-    // Just validate seed posts here; user-created posts are validated in component via store
-    return { id: params.id };
+  loader: async ({ params }) => {
+    const r = await getPostMeta({ data: { id: params.id } }).catch(() => ({ post: null }));
+    return { id: params.id, post: r.post };
   },
   component: PostPage,
   notFoundComponent: () => (
