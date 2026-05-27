@@ -71,7 +71,7 @@ function CommunityPage() {
               <div className={`grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.color} text-3xl shadow-glow ring-4 ring-background`}>{c.icon}</div>
               <div>
                 <h1 className="font-display text-xl font-black tracking-tight md:text-2xl">r/{c.slug}</h1>
-                <div className="text-xs text-muted-foreground">{c.malayalam} · {(c.members / 1000).toFixed(1)}k members · <span className="text-primary">{c.online} online</span></div>
+              <div className="text-xs text-muted-foreground">{c.malayalam} · {(((c.members ?? 0)) / 1000).toFixed(1)}k members · <span className="text-primary">{c.online ?? 0} online</span></div>
               </div>
             </div>
             <div className="flex gap-2">
