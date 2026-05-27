@@ -3,18 +3,29 @@ import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
 import { COMMUNITIES } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
-import { Bell, Settings, Users } from "lucide-react";
+import { Bell, Settings, Users, Share2 } from "lucide-react";
+import { SITE_URL } from "@/lib/site";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/c/$slug")({
-  head: ({ params }) => {
+  head: ({ params, loaderData }) => {
     const c = COMMUNITIES.find((x) => x.slug === params.slug);
+    const url = `${SITE_URL}/c/${params.slug}`;
+    const title = `r/${params.slug} · ${c?.malayalam ?? c?.name ?? ""} — Samsarikan Undo?`;
+    const desc = c?.description ?? loaderData?.description ?? "Community on Samsarikan Undo?";
     return {
       meta: [
-        { title: `r/${params.slug} — Samsarikan Undo?` },
-        { name: "description", content: c?.description ?? "Community on Samsarikan Undo?" },
-        { property: "og:title", content: `r/${params.slug} · ${c?.malayalam ?? ""}` },
-        { property: "og:description", content: c?.description ?? "" },
+        { title },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:url", content: url },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   loader: ({ params }) => {
@@ -43,6 +54,13 @@ function CommunityPage() {
   const c = Route.useLoaderData();
   const { posts: all } = useStore();
   const posts = all.filter((p) => p.community === c.slug);
+  const onShare = async () => {
+    const url = `${window.location.origin}/c/${c.slug}`;
+    try {
+      if (navigator.share) await navigator.share({ title: `r/${c.slug}`, url });
+      else { await navigator.clipboard.writeText(url); toast.success("Community link copied"); }
+    } catch {}
+  };
   return (
     <AppShell>
       <div className="relative mb-4 overflow-hidden rounded-3xl">
@@ -57,6 +75,7 @@ function CommunityPage() {
               </div>
             </div>
             <div className="flex gap-2">
+              <button onClick={onShare} className="rounded-full p-2 hover:bg-white/10" aria-label="Share community"><Share2 className="h-4 w-4" /></button>
               <button className="rounded-full p-2 hover:bg-white/10"><Bell className="h-4 w-4" /></button>
               <button className="rounded-full p-2 hover:bg-white/10"><Settings className="h-4 w-4" /></button>
               <button className="rounded-full gradient-ember px-4 py-1.5 text-xs font-bold text-primary-foreground glow-ember">Joined</button>
