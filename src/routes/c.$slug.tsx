@@ -51,7 +51,7 @@ export const Route = createFileRoute("/c/$slug")({
 });
 
 function CommunityPage() {
-  const c = Route.useLoaderData();
+  const c = Route.useLoaderData()!;
   const { posts: all } = useStore();
   const posts = all.filter((p) => p.community === c.slug);
   const onShare = async () => {
