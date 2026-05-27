@@ -10,7 +10,7 @@ import { getPostMeta } from "@/lib/post-fetch.functions";
 import { SITE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/post/$id")({
-  head: ({ params, loaderData }) => {
+  head: ({ params, loaderData }: { params: { id: string }; loaderData?: { id: string; post: { title: string; body: string | null; image: string | null } | null } }) => {
     const p = loaderData?.post;
     const url = `${SITE_URL}/post/${params.id}`;
     const title = p?.title ? `${p.title} — Samsarikan Undo?` : "Post — Samsarikan Undo?";

@@ -8,11 +8,11 @@ import { SITE_URL } from "@/lib/site";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/c/$slug")({
-  head: ({ params, loaderData }) => {
+  head: ({ params }) => {
     const c = COMMUNITIES.find((x) => x.slug === params.slug);
     const url = `${SITE_URL}/c/${params.slug}`;
     const title = `r/${params.slug} · ${c?.malayalam ?? c?.name ?? ""} — Samsarikan Undo?`;
-    const desc = c?.description ?? loaderData?.description ?? "Community on Samsarikan Undo?";
+    const desc = c?.description ?? "Community on Samsarikan Undo?";
     return {
       meta: [
         { title },
