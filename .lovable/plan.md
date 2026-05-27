@@ -1,83 +1,92 @@
-## Goal
-
-Turn Samsarikan Undo? into a real multi-user live platform with:
-1. **IP-based "username claim" auth** (no email/OTP)
-2. **Admin panel** at `/admin` gated by password `2689`
-3. **Live realtime sync** of posts, comments, votes, communities, rooms across all users
-
-To do this we must enable **Lovable Cloud** (managed Postgres + Realtime + server functions). Right now everything lives in `localStorage`, so nothing is shared between users.
+## Stack stays the same
+TanStack Start + Cloudflare Workers + Supabase (Lovable Cloud). No Next.js, no rewrite. All new work lives in `src/routes/`, `src/lib/*.functions.ts`, and Supabase migrations.
 
 ---
 
-## 1. Enable Lovable Cloud
+## Phase 1 — Shareable URLs + Social Previews (ship first)
 
-Provision the backend. This gives us Postgres, Realtime channels, server functions, and a service-role admin client — no Gmail/OAuth involved.
+**New / updated routes (deep-linkable, refresh-safe, OG previews):**
+- `/u/$username` — public user profile (replaces "me-only" `/profile`)
+- `/post/$id` — already exists; add full `head()` with OG title/description/image
+- `/c/$slug` — already exists; add OG metadata + slug-redirect support
+- `/room/$id` — live room page
+- `/confession/$id` — alias route for confession-type posts
+- `/post/$id/comment/$cid` — deep-link to a comment, scrolls + highlights
 
-## 2. Database schema (migration)
+**Sharing UX:**
+- `<ShareButton/>` component on every post/comment/community/room — uses `navigator.share` on mobile, copies link on desktop, shows toast
+- Native share sheet payload includes title + URL
 
-Tables:
-- `identities` — `id`, `username` (unique, citext), `created_at`, `is_banned`
-- `ip_bindings` — `ip_hash` (PK), `identity_id` (FK), `first_seen`, `last_seen`, `raw_ip` (admin-only)
-- `communities` — `slug` (PK), `name`, `malayalam`, `description`, `icon`, `color`, `created_by`, `created_at`
-- `posts` — `id`, `community_slug`, `author_id`, `anonymous`, `title`, `body`, `type`, `image`, `poll` (jsonb), `voice` (jsonb), `tags` (text[]), `nsfw`, `upvotes`, `created_at`, `deleted`
-- `comments` — `id`, `post_id`, `parent_id`, `author_id`, `anonymous`, `body`, `upvotes`, `created_at`, `deleted`
-- `votes` — (`user_id`, `post_id`) unique, `dir` (-1/1)
-- `reactions` — (`user_id`, `post_id`) unique, `reaction` text
-- `live_rooms` — `id`, `title`, `topic`, `host_id`, `color`, `created_at`, `ended_at`
-- `room_listeners` — (`room_id`, `user_id`) unique, `joined_at`
-
-RLS: public read on posts/comments/communities/rooms; writes require a valid `identity_id` cookie. Service role bypasses for admin.
-
-## 3. IP-claim authentication
-
-No Supabase Auth. Custom flow via server functions:
-
-- `POST /api/auth/whoami` — reads client IP from request headers (`cf-connecting-ip` / `x-forwarded-for`), hashes it with a server secret, looks up `ip_bindings`.
-  - If found → returns the bound `identity` and sets an httpOnly cookie `sk_id=<identity_id>` (1 year).
-  - If not found → returns `{ needsUsername: true }`.
-- `POST /api/auth/claim` — body `{ username }`. Validates (3–20 chars, `[a-zA-Z0-9_]`), checks uniqueness, creates `identity`, creates `ip_binding`, sets cookie.
-- Client-side `AuthGate` shown on first visit if `needsUsername`: a single-input modal "Choose your username (locked to this device's network)".
-- On subsequent visits from the same IP, user is auto-logged-in. From a new IP, the same username is **not** auto-recovered (per the user's spec: new IP → new username prompt). If they type a username that's already claimed by a different IP, we reject — they must pick another.
-
-## 4. Replace localStorage store with realtime store
-
-- Refactor `src/lib/store.tsx` to fetch from Lovable Cloud and subscribe to Realtime on `posts`, `comments`, `votes`, `reactions`, `live_rooms`.
-- All mutations (`addPost`, `addComment`, `vote`, `react`, `votePoll`, create community, join room) become server functions writing to the DB.
-- Realtime broadcasts update every connected client within ~200ms — when one user posts, everyone sees it instantly. Same for new communities and rooms.
-- Seed the DB on first boot with the existing `COMMUNITIES` and `POSTS` mock data so the app isn't empty.
-
-## 5. Admin panel `/admin`
-
-- Route `src/routes/admin.tsx` — password gate (input → check against `2689` client-side, then store an `admin_session` cookie that the server route verifies against `ADMIN_PASSWORD` env secret).
-- Server functions guarded by admin cookie:
-  - `listUsersWithIps()` — identities + their IPs + post/comment counts
-  - `listAllPosts()` / `deletePost(id)` / `editPost(id, patch)`
-  - `listAllComments()` / `deleteComment(id)`
-  - `listCommunities()` / `deleteCommunity(slug)`
-  - `getLiveStats()` — counts of online users (last 60s heartbeat), live rooms, listeners, communities, posts today, comments today
-- Admin UI tabs: **Live Stats**, **Users (IPs)**, **Posts**, **Comments**, **Communities**, **Rooms**. Each row has edit/delete. Stats panel uses Realtime + a 5s polling refresh.
-
-## 6. Presence / live counters
-
-- `presence_pings` table: `(user_id, last_seen)`. Client sends a heartbeat every 30s. "Online" = last_seen within 60s.
-- Exposed via `getLiveStats` for admin and a small "X online" badge in the app shell.
+**OG previews (per-route `head()`):**
+- Dynamic `title`, `description`, `og:image`, `twitter:card` derived from loader data
+- Absolute URLs built via a `getRequestOrigin()` server fn (required for crawlers)
 
 ---
 
-## Technical notes
+## Phase 2 — Soft delete + Edit history + Moderation log
 
-- Cookies are httpOnly + sameSite=lax. `sk_id` is the only auth token; the server resolves the identity from it on every server function call.
-- IP hashing uses HMAC-SHA256 with a server secret so raw IPs are never stored in `ip_hash`; raw IP is stored separately in `raw_ip` and only returned to admin queries.
-- For Cloudflare Worker SSR, IP comes from `cf-connecting-ip` header (falls back to `x-forwarded-for`).
-- Admin password `2689` is stored as `ADMIN_PASSWORD` secret, not hardcoded in client bundle.
-- The first user to visit becomes the bootstrap seeder via an idempotent server function call.
+**DB migration:**
+- Add `deleted_at`, `deleted_by`, `restored_at` columns on `posts`, `comments`, `communities`, `identities`
+- New table `edit_history` — `entity_type`, `entity_id`, `prev_state` (jsonb), `new_state` (jsonb), `editor_id`, `created_at`
+- New table `moderation_log` — `admin_id`, `action`, `entity_type`, `entity_id`, `prev_state`, `new_state`, `reason`, `created_at`
+- New table `reports` — `reporter_id`, `entity_type`, `entity_id`, `reason`, `status`, `created_at`
+
+**Behavior:**
+- All deletes flip `deleted=true` + write `moderation_log` row (already partially there)
+- All edits snapshot `prev_state` into `edit_history` before writing
+- Server fn `undoLastAction({ logId })` reverses by reading `prev_state`
 
 ---
 
-## What you'll see when this ships
+## Phase 3 — Admin upgrade
 
-1. Open the site on a new device → modal "Pick your username" → type it → you're in, forever, on that network.
-2. Post something → every other open browser sees it appear without refresh.
-3. Visit `/admin` → enter `2689` → see live counters, every user's username + IP, and delete/edit controls on everything.
+**Universal moderation search bar** (top of `/admin`):
+- Single input — paste URL / username / UUID / IP
+- Auto-detect → route to the right mod panel (post, user, comment, community, IP)
 
-Approving this will enable Lovable Cloud (one-time backend provisioning) and migrate the app off localStorage onto the live database.
+**Per-entity mod panels:**
+- Post panel: content, media, author + IP, reports, edit history, pin/feature/NSFW/archive/delete/restore
+- User panel: identity row, all IPs, post count, comment count, ban toggle, undo ban
+- Community panel: edit name/description/icon, delete/restore, member list
+- Realtime: subscribe to `reports`, `posts`, `moderation_log` for live counters
+
+**Moderation log viewer** with undo button per row.
+
+---
+
+## Phase 4 — Community invites
+
+- New table `community_invites` — `code`, `community_slug`, `created_by`, `expires_at` (nullable = permanent), `max_uses`, `uses`
+- Route `/invite/$slug/$code` — validates, joins user to community, redirects to `/c/$slug`
+- Community settings: "Generate invite" → permanent / 24h / 7d, copy link, QR code (uses `qrcode` npm package)
+
+---
+
+## Phase 5 — Slug redirects + rename safety
+
+- New table `slug_aliases` — `old_slug`, `new_slug`, `entity_type`, `created_at`
+- When a community/post is renamed, write the old slug to `slug_aliases`
+- Route loaders check `slug_aliases` on 404 and 301-redirect to the current slug
+
+---
+
+## Phase 6 — Anti-abuse hardening
+
+- Rate limiting per IP via a `rate_limits` table (post: 5/min, comment: 20/min, report: 10/hour)
+- Suspicious IP score on `ip_bindings` (multiple usernames, rapid posting → flag)
+- Auto-hide posts that hit N reports until admin review
+- Honeypot field on post form for bot detection
+
+---
+
+## What's NOT in scope
+- Switching frameworks (you confirmed: stay on TanStack Start)
+- Building a real-time WebRTC voice room (the room route exists as text/metadata only for now)
+- Email/SMS — IP-claim auth stays as-is
+
+---
+
+## My recommendation
+Ship **Phase 1** now (biggest user-visible win, no schema risk), then **Phase 2 + 3** together (admin gets real teeth), then 4/5/6 based on what you see in production.
+
+Reply with the phase number(s) to build first, or "all" if you accept the bug risk of a single mega-batch.
