@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { COMMUNITIES } from "@/lib/mock-data";
+import { COMMUNITIES, type Community } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { Bell, Settings, Users, Share2 } from "lucide-react";
 import { SITE_URL } from "@/lib/site";
@@ -51,8 +51,7 @@ export const Route = createFileRoute("/c/$slug")({
 });
 
 function CommunityPage() {
-  const data = Route.useLoaderData();
-  const c = data as NonNullable<typeof data>;
+  const c = Route.useLoaderData() as Community;
   const { posts: all } = useStore();
   const posts = all.filter((p) => p.community === c.slug);
   const onShare = async () => {
