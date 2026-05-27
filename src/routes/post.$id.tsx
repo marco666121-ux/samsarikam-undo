@@ -10,8 +10,9 @@ import { getPostMeta } from "@/lib/post-fetch.functions";
 import { SITE_URL } from "@/lib/site";
 
 export const Route = createFileRoute("/post/$id")({
-  head: ({ params, loaderData }: { params: { id: string }; loaderData?: { id: string; post: { title: string; body: string | null; image: string | null } | null } }) => {
-    const p = loaderData?.post;
+  head: (ctx: any) => {
+    const params = ctx.params as { id: string };
+    const p = ctx.loaderData?.post as { title: string; body: string | null; image: string | null } | undefined;
     const url = `${SITE_URL}/post/${params.id}`;
     const title = p?.title ? `${p.title} — Samsarikan Undo?` : "Post — Samsarikan Undo?";
     const desc = (p?.body?.slice(0, 200) ?? p?.title ?? "Read the conversation on Samsarikan Undo?");
