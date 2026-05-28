@@ -216,7 +216,7 @@ export const softDelete = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = { deleted_at: new Date().toISOString(), restored_at: null };
     if (data.type === "post" || data.type === "comment") patch.deleted = true;
     if (data.type === "user") patch.is_banned = true;
-    await supabaseAdmin.from(ENTITY_TABLE[data.type]).update(patch).eq(ENTITY_KEY[data.type], data.id);
+    await db.from(ENTITY_TABLE[data.type]).update(patch).eq(ENTITY_KEY[data.type], data.id);
     await writeLog({
       action: data.type === "user" ? "ban" : "soft_delete",
       entity_type: data.type,
@@ -239,7 +239,7 @@ export const restoreEntity = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = { deleted_at: null, restored_at: new Date().toISOString() };
     if (data.type === "post" || data.type === "comment") patch.deleted = false;
     if (data.type === "user") patch.is_banned = false;
-    await supabaseAdmin.from(ENTITY_TABLE[data.type]).update(patch).eq(ENTITY_KEY[data.type], data.id);
+    await db.from(ENTITY_TABLE[data.type]).update(patch).eq(ENTITY_KEY[data.type], data.id);
     await writeLog({
       action: data.type === "user" ? "unban" : "restore",
       entity_type: data.type,
@@ -285,9 +285,9 @@ export const editWithHistory = createServerFn({ method: "POST" })
     if (Object.keys(clean).length === 0) throw new Error("Nothing to update");
     if (data.type === "post" || data.type === "comment") (clean as any).edited_at = new Date().toISOString();
 
-    await supabaseAdmin.from(ENTITY_TABLE[data.type]).update(clean).eq(ENTITY_KEY[data.type], data.id);
+    await db.from(ENTITY_TABLE[data.type]).update(clean).eq(ENTITY_KEY[data.type], data.id);
 
-    await supabaseAdmin.from("edit_history").insert({
+    await db.from("edit_history").insert({
       entity_type: data.type,
       entity_id: String(data.id),
       prev_state: prevSnap,
@@ -341,12 +341,12 @@ export const undoModerationAction = createServerFn({ method: "POST" })
       const patch: Record<string, unknown> = { deleted_at: null, restored_at: new Date().toISOString() };
       if (type === "post" || type === "comment") patch.deleted = false;
       if (type === "user") patch.is_banned = false;
-      await supabaseAdmin.from(ENTITY_TABLE[type]).update(patch).eq(ENTITY_KEY[type], id);
+      await db.from(ENTITY_TABLE[type]).update(patch).eq(ENTITY_KEY[type], id);
     } else if (entry.action === "restore" || entry.action === "unban") {
       const patch: Record<string, unknown> = { deleted_at: new Date().toISOString() };
       if (type === "post" || type === "comment") patch.deleted = true;
       if (type === "user") patch.is_banned = true;
-      await supabaseAdmin.from(ENTITY_TABLE[type]).update(patch).eq(ENTITY_KEY[type], id);
+      await db.from(ENTITY_TABLE[type]).update(patch).eq(ENTITY_KEY[type], id);
     } else if (entry.action === "edit") {
       // restore prev_state fields
       const clean: Record<string, unknown> = {};
@@ -359,12 +359,12 @@ export const undoModerationAction = createServerFn({ method: "POST" })
         if (allowed[type]?.includes(k)) clean[k] = v;
       });
       if (Object.keys(clean).length === 0) throw new Error("Nothing to revert");
-      await supabaseAdmin.from(ENTITY_TABLE[type]).update(clean).eq(ENTITY_KEY[type], id);
+      await db.from(ENTITY_TABLE[type]).update(clean).eq(ENTITY_KEY[type], id);
     } else {
       throw new Error(`Cannot undo action: ${entry.action}`);
     }
 
-    await supabaseAdmin.from("moderation_log").update({ undone_at: new Date().toISOString() }).eq("id", data.logId);
+    await db.from("moderation_log").update({ undone_at: new Date().toISOString() }).eq("id", data.logId);
     await writeLog({
       action: `undo:${entry.action}`,
       entity_type: type,
