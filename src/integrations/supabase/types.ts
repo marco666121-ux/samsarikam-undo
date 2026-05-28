@@ -22,9 +22,13 @@ export type Database = {
           body: string
           created_at: string
           deleted: boolean
+          deleted_at: string | null
+          deleted_by: string | null
+          edited_at: string | null
           id: string
           parent_id: string | null
           post_id: string
+          restored_at: string | null
           upvotes: number
         }
         Insert: {
@@ -34,9 +38,13 @@ export type Database = {
           body: string
           created_at?: string
           deleted?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
+          edited_at?: string | null
           id?: string
           parent_id?: string | null
           post_id: string
+          restored_at?: string | null
           upvotes?: number
         }
         Update: {
@@ -46,9 +54,13 @@ export type Database = {
           body?: string
           created_at?: string
           deleted?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
+          edited_at?: string | null
           id?: string
           parent_id?: string | null
           post_id?: string
+          restored_at?: string | null
           upvotes?: number
         }
         Relationships: [
@@ -80,30 +92,39 @@ export type Database = {
           color: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           icon: string | null
           malayalam: string | null
           name: string
+          restored_at: string | null
           slug: string
         }
         Insert: {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           icon?: string | null
           malayalam?: string | null
           name: string
+          restored_at?: string | null
           slug: string
         }
         Update: {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           icon?: string | null
           malayalam?: string | null
           name?: string
+          restored_at?: string | null
           slug?: string
         }
         Relationships: [
@@ -116,23 +137,65 @@ export type Database = {
           },
         ]
       }
+      edit_history: {
+        Row: {
+          created_at: string
+          editor_id: string | null
+          editor_label: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          new_state: Json
+          prev_state: Json
+        }
+        Insert: {
+          created_at?: string
+          editor_id?: string | null
+          editor_label?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_state: Json
+          prev_state: Json
+        }
+        Update: {
+          created_at?: string
+          editor_id?: string | null
+          editor_label?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_state?: Json
+          prev_state?: Json
+        }
+        Relationships: []
+      }
       identities: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_banned: boolean
+          restored_at: string | null
           username: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_banned?: boolean
+          restored_at?: string | null
           username: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_banned?: boolean
+          restored_at?: string | null
           username?: string
         }
         Relationships: []
@@ -216,6 +279,45 @@ export type Database = {
           },
         ]
       }
+      moderation_log: {
+        Row: {
+          action: string
+          admin_label: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          new_state: Json | null
+          prev_state: Json | null
+          reason: string | null
+          undone_at: string | null
+        }
+        Insert: {
+          action: string
+          admin_label?: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_state?: Json | null
+          prev_state?: Json | null
+          reason?: string | null
+          undone_at?: string | null
+        }
+        Update: {
+          action?: string
+          admin_label?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_state?: Json | null
+          prev_state?: Json | null
+          reason?: string | null
+          undone_at?: string | null
+        }
+        Relationships: []
+      }
       poll_votes: {
         Row: {
           created_at: string
@@ -262,12 +364,16 @@ export type Database = {
           community_slug: string
           created_at: string
           deleted: boolean
+          deleted_at: string | null
+          deleted_by: string | null
+          edited_at: string | null
           id: string
           image: string | null
           nsfw: boolean
           pinned: boolean
           poll: Json | null
           reactions: Json
+          restored_at: string | null
           tags: string[] | null
           title: string
           type: string
@@ -283,12 +389,16 @@ export type Database = {
           community_slug: string
           created_at?: string
           deleted?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
+          edited_at?: string | null
           id?: string
           image?: string | null
           nsfw?: boolean
           pinned?: boolean
           poll?: Json | null
           reactions?: Json
+          restored_at?: string | null
           tags?: string[] | null
           title: string
           type?: string
@@ -304,12 +414,16 @@ export type Database = {
           community_slug?: string
           created_at?: string
           deleted?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
+          edited_at?: string | null
           id?: string
           image?: string | null
           nsfw?: boolean
           pinned?: boolean
           poll?: Json | null
           reactions?: Json
+          restored_at?: string | null
           tags?: string[] | null
           title?: string
           type?: string
