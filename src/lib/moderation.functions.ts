@@ -23,6 +23,10 @@ const ENTITY_KEY: Record<EntityType, string> = {
   user: "id",
 };
 
+// Most operations here use dynamic table names + jsonb snapshots, which the
+// typed Supabase client cannot model. Cast to any at the call sites.
+const db = supabaseAdmin as unknown as any;
+
 async function writeLog(opts: {
   action: string;
   entity_type: EntityType;
@@ -31,7 +35,7 @@ async function writeLog(opts: {
   new_state?: unknown;
   reason?: string;
 }) {
-  await supabaseAdmin.from("moderation_log").insert({
+  await db.from("moderation_log").insert({
     action: opts.action,
     entity_type: opts.entity_type,
     entity_id: String(opts.entity_id),
@@ -42,7 +46,7 @@ async function writeLog(opts: {
 }
 
 async function loadEntity(type: EntityType, id: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await db
     .from(ENTITY_TABLE[type])
     .select("*")
     .eq(ENTITY_KEY[type], id)
