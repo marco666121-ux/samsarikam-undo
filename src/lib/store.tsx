@@ -32,6 +32,7 @@ type State = {
   onlineCount: number;
   needsUsername: boolean;
   authReady: boolean;
+  blocked: Record<string, true>;
 };
 
 function mapDbPost(row: any): Post {
@@ -111,6 +112,10 @@ type Ctx = State & {
   setIdentity: (i: { username: string; ghost: boolean }) => void;
   claim: (username: string) => Promise<void>;
   refresh: () => Promise<void>;
+  blockUser: (username: string) => void;
+  unblockUser: (username: string) => void;
+  isBlocked: (username: string) => boolean;
+  removePostLocal: (postId: string) => void;
 };
 
 export type NewPostInput = {
@@ -143,6 +148,7 @@ const initialState = (): State => ({
   onlineCount: 0,
   needsUsername: false,
   authReady: false,
+  blocked: {},
 });
 
 const LOCAL_KEY = "samsarikan:local-prefs:v1";
@@ -218,16 +224,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(LOCAL_KEY);
       if (raw) {
         const p = JSON.parse(raw);
-        setState((s) => ({ ...s, saved: p.saved ?? {}, votes: p.votes ?? {}, userReactions: p.userReactions ?? {}, pollVotes: p.pollVotes ?? {} }));
+        setState((s) => ({ ...s, saved: p.saved ?? {}, votes: p.votes ?? {}, userReactions: p.userReactions ?? {}, pollVotes: p.pollVotes ?? {}, blocked: p.blocked ?? {} }));
       }
     } catch {}
   }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify({ saved: state.saved, votes: state.votes, userReactions: state.userReactions, pollVotes: state.pollVotes }));
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ saved: state.saved, votes: state.votes, userReactions: state.userReactions, pollVotes: state.pollVotes, blocked: state.blocked }));
     } catch {}
-  }, [state.saved, state.votes, state.userReactions, state.pollVotes]);
+  }, [state.saved, state.votes, state.userReactions, state.pollVotes, state.blocked]);
 
   const loadComments = useCallback(async (postId: string) => {
     try {
@@ -352,9 +358,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, identity: i }));
   }, []);
 
+  const blockUser = useCallback((username: string) => {
+    setState((s) => ({ ...s, blocked: { ...s.blocked, [username.toLowerCase()]: true } }));
+  }, []);
+  const unblockUser = useCallback((username: string) => {
+    setState((s) => {
+      const next = { ...s.blocked };
+      delete next[username.toLowerCase()];
+      return { ...s, blocked: next };
+    });
+  }, []);
+  const isBlocked = useCallback((username: string) => !!state.blocked[username.toLowerCase()], [state.blocked]);
+  const removePostLocal = useCallback((postId: string) => {
+    setState((s) => ({ ...s, posts: s.posts.filter((p) => p.id !== postId) }));
+  }, []);
+
   const value = useMemo<Ctx>(
-    () => ({ ...state, vote, voteComment, react, toggleSave, votePoll, addPost, addComment, loadComments, createCommunity, markAllRead, setIdentity, claim, refresh }),
-    [state, vote, voteComment, react, toggleSave, votePoll, addPost, addComment, loadComments, createCommunity, markAllRead, setIdentity, claim, refresh],
+    () => ({ ...state, vote, voteComment, react, toggleSave, votePoll, addPost, addComment, loadComments, createCommunity, markAllRead, setIdentity, claim, refresh, blockUser, unblockUser, isBlocked, removePostLocal }),
+    [state, vote, voteComment, react, toggleSave, votePoll, addPost, addComment, loadComments, createCommunity, markAllRead, setIdentity, claim, refresh, blockUser, unblockUser, isBlocked, removePostLocal],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
