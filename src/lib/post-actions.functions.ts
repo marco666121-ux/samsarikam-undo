@@ -43,7 +43,7 @@ export const editPost = createServerFn({ method: "POST" })
       editor_id: me.id,
       editor_label: me.username,
     });
-    await supabaseAdmin.from("posts").update(patch).eq("id", data.post_id);
+    await (supabaseAdmin as any).from("posts").update(patch).eq("id", data.post_id);
     return { ok: true };
   });
 
