@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
 import { type Comment } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, MessageCircle, Pin, Send, Smile } from "lucide-react";
 import { getPostMeta } from "@/lib/post-fetch.functions";
@@ -59,10 +59,12 @@ export const Route = createFileRoute("/post/$id")({
 
 function PostPage() {
   const { id } = Route.useLoaderData();
-  const { posts, comments, addComment, voteComment, commentVotes } = useStore();
+  const { posts, comments, addComment, voteComment, commentVotes, loadComments } = useStore();
   const post = posts.find((p) => p.id === id);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
+
+  useEffect(() => { loadComments(id); }, [id, loadComments]);
 
   if (!post) {
     // user-created post not hydrated yet OR truly missing
@@ -91,7 +93,7 @@ function PostPage() {
       <Link to="/" className="mb-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to feed
       </Link>
-      <PostCard post={post} />
+      <PostCard post={post} full />
 
       <div className="mt-4 glass rounded-2xl p-3">
         <div className="flex items-start gap-3">
