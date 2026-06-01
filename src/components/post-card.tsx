@@ -1,27 +1,37 @@
-import { Link } from "@tanstack/react-router";
-import { MessageCircle, Share2, Bookmark, MoreHorizontal, ArrowUp, ArrowDown, Play, Pause, Pin } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { MessageCircle, Share2, Bookmark, MoreHorizontal, ArrowUp, ArrowDown, Play, Pause, Pin, Link2, Flag, UserX, Trash2, Pencil, User } from "lucide-react";
 import { type Post, REACTIONS, COMMUNITIES } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { deletePost as deletePostFn, reportPost as reportPostFn } from "@/lib/post-actions.functions";
 
 const GRADIENTS: Record<string, string> = {
   "gradient-1": "linear-gradient(135deg, oklch(0.45 0.2 30), oklch(0.7 0.2 60))",
   "gradient-2": "linear-gradient(135deg, oklch(0.3 0.15 350), oklch(0.55 0.22 20))",
 };
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post, full = false }: { post: Post; full?: boolean }) {
   const community = COMMUNITIES.find((c) => c.slug === post.community);
   const reactionEntries = Object.entries(post.reactions ?? {}) as [import("@/lib/mock-data").Reaction, number][];
   const topReactions = reactionEntries.sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const { vote, react, toggleSave, votePoll, votes, userReactions, saved, pollVotes } = useStore();
+  const { vote, react, toggleSave, votePoll, votes, userReactions, saved, pollVotes, identity, blockUser, isBlocked, removePostLocal } = useStore();
   const myVote = votes[post.id] ?? 0;
   const myReaction = userReactions[post.id] ?? null;
   const isSaved = !!saved[post.id];
   const myPoll = pollVotes[post.id];
+  const navigate = useNavigate();
+  const isOwner = !!identity.id && post.author === identity.username && !post.anonymous;
+  const url = typeof window !== "undefined" ? `${window.location.origin}/post/${post.id}` : `/post/${post.id}`;
 
   const onShare = async () => {
-    const url = typeof window !== "undefined" ? `${window.location.origin}/post/${post.id}` : "";
     try {
       if (navigator.share) {
         await navigator.share({ title: post.title, url });
@@ -31,6 +41,41 @@ export function PostCard({ post }: { post: Post }) {
       }
     } catch {}
   };
+
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { toast.error("Couldn't copy"); }
+  };
+
+  const onReport = async () => {
+    const reason = window.prompt("Why are you reporting this post?");
+    if (!reason?.trim()) return;
+    try {
+      await reportPostFn({ data: { post_id: post.id, reason: reason.trim() } });
+      toast.success("Reported — moderators will review");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't report");
+    }
+  };
+
+  const onBlock = () => {
+    if (post.anonymous) { toast("Can't block anonymous posters"); return; }
+    blockUser(post.author);
+    toast.success(`Blocked u/${post.author}`);
+  };
+
+  const onDelete = async () => {
+    if (!window.confirm("Delete this post? This can be undone by an admin.")) return;
+    try {
+      await deletePostFn({ data: { post_id: post.id } });
+      removePostLocal(post.id);
+      toast.success("Post deleted");
+      if (full) navigate({ to: "/" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't delete");
+    }
+  };
+
+  if (isBlocked(post.author) && !post.anonymous) return null;
 
   return (
     <article className="group relative overflow-hidden rounded-2xl glass transition hover:border-primary/30 hover:shadow-card animate-float-up">
@@ -73,7 +118,48 @@ export function PostCard({ post }: { post: Post }) {
             <span>·</span>
             <span>{post.age}</span>
             {post.nsfw && <span className="rounded-md bg-destructive/20 px-1.5 py-0.5 text-[10px] font-bold text-destructive">NSFW</span>}
-            <button className="ml-auto rounded-md p-1 hover:bg-white/5"><MoreHorizontal className="h-4 w-4" /></button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="ml-auto rounded-md p-1 hover:bg-white/5" aria-label="Post options">
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {!post.anonymous && (
+                  <DropdownMenuItem onSelect={() => navigate({ to: "/u/$username", params: { username: post.author } })}>
+                    <User className="mr-2 h-4 w-4" /> View profile
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={onShare}>
+                  <Share2 className="mr-2 h-4 w-4" /> Share post
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={copyLink}>
+                  <Link2 className="mr-2 h-4 w-4" /> Copy link
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {isOwner ? (
+                  <>
+                    <DropdownMenuItem onSelect={() => toast("Inline edit coming in Batch 2")}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete post
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={onReport}>
+                      <Flag className="mr-2 h-4 w-4" /> Report post
+                    </DropdownMenuItem>
+                    {!post.anonymous && (
+                      <DropdownMenuItem onSelect={onBlock}>
+                        <UserX className="mr-2 h-4 w-4" /> Block u/{post.author}
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Title + body */}
@@ -82,7 +168,9 @@ export function PostCard({ post }: { post: Post }) {
               {post.title}
             </h3>
             {post.body && post.type !== "voice" && (
-              <p className="mt-1.5 line-clamp-3 whitespace-pre-line text-sm text-muted-foreground">{post.body}</p>
+              <p className={`mt-1.5 whitespace-pre-line text-sm ${full ? "text-foreground/90 leading-relaxed" : "line-clamp-3 text-muted-foreground"}`}>
+                {post.body}
+              </p>
             )}
           </Link>
 
