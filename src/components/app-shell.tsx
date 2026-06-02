@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Home, Compass, Plus, Bell, User, Search, Flame, Radio } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreatePostModal } from "./create-post-modal";
 import { useStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -34,6 +34,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function TopBar({ onCompose }: { onCompose: () => void }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { identity } = useStore();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim().toLowerCase();
@@ -58,6 +70,7 @@ function TopBar({ onCompose }: { onCompose: () => void }) {
         <form onSubmit={onSearch} className="relative ml-2 flex-1 max-w-xl">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search posts, communities, vibes..."
@@ -72,19 +85,31 @@ function TopBar({ onCompose }: { onCompose: () => void }) {
           <Plus className="h-4 w-4" />
           Post
         </button>
-        <Link
-          to="/profile"
-          className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-surface text-sm font-bold"
-          title="Profile"
-        >
-          T
-        </Link>
+        {identity.ghost || !identity.id ? (
+          <Link
+            to="/profile"
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-surface text-sm font-bold"
+            title="Profile"
+          >
+            👻
+          </Link>
+        ) : (
+          <Link
+            to="/u/$username"
+            params={{ username: identity.username }}
+            className="grid h-9 w-9 place-items-center rounded-full gradient-ember text-sm font-bold text-primary-foreground"
+            title={`u/${identity.username}`}
+          >
+            {identity.username[0]?.toUpperCase()}
+          </Link>
+        )}
       </div>
     </header>
   );
 }
 
 function LeftRail({ path }: { path: string }) {
+  const { rooms } = useStore();
   return (
     <aside className="sticky top-20 hidden h-[calc(100vh-6rem)] w-56 shrink-0 flex-col gap-1 overflow-y-auto no-scrollbar md:flex">
       {NAV.map(({ to, label, icon: Icon }) => {
@@ -104,15 +129,22 @@ function LeftRail({ path }: { path: string }) {
           </Link>
         );
       })}
-      <div className="mt-4 px-3 text-[11px] uppercase tracking-wider text-muted-foreground">Live now</div>
-      <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground">
-        <Radio className="h-4 w-4 animate-pulse text-primary" />
-        Late Night Talks
-      </Link>
-      <Link to="/" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground">
-        <Radio className="h-4 w-4 animate-pulse text-primary" />
-        Relationship Roast
-      </Link>
+      {rooms.length > 0 && (
+        <>
+          <div className="mt-4 px-3 text-[11px] uppercase tracking-wider text-muted-foreground">Live now</div>
+          {rooms.slice(0, 5).map((r: any) => (
+            <Link
+              key={r.id}
+              to="/room/$id"
+              params={{ id: r.id }}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground"
+            >
+              <Radio className="h-4 w-4 animate-pulse text-primary" />
+              <span className="truncate">{r.title}</span>
+            </Link>
+          ))}
+        </>
+      )}
     </aside>
   );
 }
