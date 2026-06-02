@@ -141,7 +141,7 @@ export function PostCard({ post, full = false }: { post: Post; full?: boolean })
                 <DropdownMenuSeparator />
                 {isOwner ? (
                   <>
-                    <DropdownMenuItem onSelect={() => toast("Inline edit coming in Batch 2")}>
+                    <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                       <Pencil className="mr-2 h-4 w-4" /> Edit post
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
@@ -264,6 +264,7 @@ export function PostCard({ post, full = false }: { post: Post; full?: boolean })
           </div>
         </div>
       </div>
+      <EditPostModal post={post} open={editOpen} onOpenChange={setEditOpen} />
     </article>
   );
 }
