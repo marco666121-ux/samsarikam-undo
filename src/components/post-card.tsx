@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deletePost as deletePostFn, reportPost as reportPostFn } from "@/lib/post-actions.functions";
+import { EditPostModal } from "@/components/edit-post-modal";
 
 const GRADIENTS: Record<string, string> = {
   "gradient-1": "linear-gradient(135deg, oklch(0.45 0.2 30), oklch(0.7 0.2 60))",
@@ -30,6 +31,7 @@ export function PostCard({ post, full = false }: { post: Post; full?: boolean })
   const navigate = useNavigate();
   const isOwner = !!identity.id && post.author === identity.username && !post.anonymous;
   const url = typeof window !== "undefined" ? `${window.location.origin}/post/${post.id}` : `/post/${post.id}`;
+  const [editOpen, setEditOpen] = useState(false);
 
   const onShare = async () => {
     try {
@@ -139,7 +141,7 @@ export function PostCard({ post, full = false }: { post: Post; full?: boolean })
                 <DropdownMenuSeparator />
                 {isOwner ? (
                   <>
-                    <DropdownMenuItem onSelect={() => toast("Inline edit coming in Batch 2")}>
+                    <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                       <Pencil className="mr-2 h-4 w-4" /> Edit post
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
@@ -262,6 +264,7 @@ export function PostCard({ post, full = false }: { post: Post; full?: boolean })
           </div>
         </div>
       </div>
+      <EditPostModal post={post} open={editOpen} onOpenChange={setEditOpen} />
     </article>
   );
 }

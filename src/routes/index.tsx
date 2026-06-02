@@ -1,11 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
-import { LIVE_ROOMS, TRENDING_TAGS } from "@/lib/mock-data";
+import { TRENDING_TAGS } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
-import { Flame, Radio, Sparkles, TrendingUp, Users } from "lucide-react";
+import { CreateRoomModal } from "@/components/create-room-modal";
+import { Flame, Plus, Radio, Sparkles, TrendingUp, Users } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,35 +90,52 @@ function Hero() {
 }
 
 function LiveStrip() {
+  const { rooms } = useStore();
+  const [openRoom, setOpenRoom] = useState(false);
+  const navigate = useNavigate();
   return (
     <div className="mb-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
           <Radio className="h-4 w-4 animate-pulse text-primary" /> Live rooms
         </h2>
-        <button className="text-xs text-ember hover:underline">See all</button>
+        <button onClick={() => setOpenRoom(true)} className="flex items-center gap-1 text-xs text-ember hover:underline">
+          <Plus className="h-3 w-3" /> Start a room
+        </button>
       </div>
       <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-2 no-scrollbar md:mx-0 md:px-0">
-        {LIVE_ROOMS.map((r) => (
-          <div key={r.id} className={`min-w-[240px] overflow-hidden rounded-2xl bg-gradient-to-br ${r.color} p-[1px]`}>
+        {rooms.length === 0 && (
+          <button
+            onClick={() => setOpenRoom(true)}
+            className="min-w-[240px] rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 text-left text-sm text-primary hover:bg-primary/10"
+          >
+            <Radio className="mb-2 h-5 w-5" />
+            <div className="font-display font-bold">No live rooms yet</div>
+            <div className="text-xs text-muted-foreground">Tap to start one</div>
+          </button>
+        )}
+        {rooms.map((r: any) => (
+          <div key={r.id} className={`min-w-[240px] overflow-hidden rounded-2xl bg-gradient-to-br ${r.color ?? "from-rose-500 to-red-500"} p-[1px]`}>
             <div className="h-full rounded-2xl bg-background/85 p-3 backdrop-blur">
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> Live · {r.listeners} listening
               </div>
               <div className="mt-1.5 font-display font-bold leading-tight">{r.title}</div>
-              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{r.topic}</div>
+              <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{r.topic ?? `Hosted by u/${r.host_username}`}</div>
               <div className="mt-2 flex items-center gap-1">
-                {r.hosts.map((h, i) => (
-                  <span key={i} className="grid h-6 w-6 place-items-center rounded-full border border-background bg-surface-2 text-[10px] font-bold" style={{ marginLeft: i ? -8 : 0 }}>
-                    {h.startsWith("+") ? h : h[0]}
-                  </span>
-                ))}
-                <button onClick={() => toast(`Joining ${r.title}… 🎙️`)} className="ml-auto rounded-full gradient-ember px-2.5 py-1 text-[10px] font-bold text-primary-foreground">Join</button>
+                <span className="grid h-6 w-6 place-items-center rounded-full border border-background bg-surface-2 text-[10px] font-bold">
+                  {(r.host_username ?? "?")[0]?.toUpperCase()}
+                </span>
+                <button
+                  onClick={() => navigate({ to: "/room/$id", params: { id: r.id } })}
+                  className="ml-auto rounded-full gradient-ember px-2.5 py-1 text-[10px] font-bold text-primary-foreground"
+                >Join</button>
               </div>
             </div>
           </div>
         ))}
       </div>
+      <CreateRoomModal open={openRoom} onOpenChange={setOpenRoom} />
     </div>
   );
 }
