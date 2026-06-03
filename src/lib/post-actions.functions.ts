@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireIdentity, isAdmin } from "./session.server";
+import { enforceRateLimit } from "./rate-limit.server";
+import { getClientIp, hashIp } from "./session.server";
+
+const AUTO_HIDE_THRESHOLD = 5;
 
 export const deletePost = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ post_id: z.string().uuid() }).parse(d))
@@ -56,6 +60,15 @@ export const reportPost = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const me = await requireIdentity();
+    await enforceRateLimit("report");
+    const ipHash = hashIp(getClientIp());
+    await (supabaseAdmin as any).from("reports").insert({
+      reporter_id: me.id,
+      reporter_ip_hash: ipHash,
+      entity_type: "post",
+      entity_id: data.post_id,
+      reason: data.reason,
+    });
     await (supabaseAdmin as any).from("moderation_log").insert({
       action: "report",
       entity_type: "post",
@@ -64,5 +77,11 @@ export const reportPost = createServerFn({ method: "POST" })
       admin_label: `report:${me.username}`,
       new_state: { reporter_id: me.id },
     });
+    const { data: cur } = await supabaseAdmin
+      .from("posts").select("report_count, auto_hidden").eq("id", data.post_id).maybeSingle();
+    const next = ((cur as any)?.report_count ?? 0) + 1;
+    const autoHidden = (cur as any)?.auto_hidden || next >= AUTO_HIDE_THRESHOLD;
+    await (supabaseAdmin as any).from("posts")
+      .update({ report_count: next, auto_hidden: autoHidden }).eq("id", data.post_id);
     return { ok: true };
   });
