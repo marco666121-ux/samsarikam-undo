@@ -19,7 +19,7 @@ const PostInput = z.object({
 
 export const listFeed = createServerFn({ method: "GET" }).handler(async () => {
   const [{ data: posts }, { data: communities }, { data: rooms }, presence] = await Promise.all([
-    supabaseAdmin.from("posts").select("*").eq("deleted", false).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("posts").select("*").eq("deleted", false).eq("auto_hidden", false).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("communities").select("*").order("created_at"),
     supabaseAdmin.from("live_rooms").select("*").is("ended_at", null).order("created_at", { ascending: false }),
     supabaseAdmin.from("presence_pings").select("user_id", { count: "exact", head: true }).gte("last_seen", new Date(Date.now() - 60_000).toISOString()),
