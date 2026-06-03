@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireIdentity, getCurrentIdentity } from "./session.server";
+import { enforceRateLimit } from "./rate-limit.server";
 
 const PostInput = z.object({
   community_slug: z.string().min(1),
@@ -18,7 +19,7 @@ const PostInput = z.object({
 
 export const listFeed = createServerFn({ method: "GET" }).handler(async () => {
   const [{ data: posts }, { data: communities }, { data: rooms }, presence] = await Promise.all([
-    supabaseAdmin.from("posts").select("*").eq("deleted", false).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("posts").select("*").eq("deleted", false).eq("auto_hidden", false).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("communities").select("*").order("created_at"),
     supabaseAdmin.from("live_rooms").select("*").is("ended_at", null).order("created_at", { ascending: false }),
     supabaseAdmin.from("presence_pings").select("user_id", { count: "exact", head: true }).gte("last_seen", new Date(Date.now() - 60_000).toISOString()),
@@ -47,6 +48,7 @@ export const createPost = createServerFn({ method: "POST" })
   .inputValidator((d) => PostInput.parse(d))
   .handler(async ({ data }) => {
     const me = await requireIdentity();
+    await enforceRateLimit("post");
     const { data: created, error } = await supabaseAdmin
       .from("posts")
       .insert({
@@ -149,6 +151,7 @@ export const addComment = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ post_id: z.string().uuid(), body: z.string().trim().min(1).max(4000), parent_id: z.string().uuid().nullable().optional(), anonymous: z.boolean().default(false) }).parse(d))
   .handler(async ({ data }) => {
     const me = await requireIdentity();
+    await enforceRateLimit("comment");
     const { data: created, error } = await supabaseAdmin
       .from("comments")
       .insert({
@@ -178,6 +181,7 @@ export const createCommunity = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await requireIdentity();
+    await enforceRateLimit("community");
     const { data: created, error } = await supabaseAdmin
       .from("communities")
       .insert({
@@ -199,6 +203,7 @@ export const createRoom = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ title: z.string().min(2).max(80), topic: z.string().max(200).optional().nullable(), color: z.string().max(80).optional().nullable() }).parse(d))
   .handler(async ({ data }) => {
     const me = await requireIdentity();
+    await enforceRateLimit("room");
     const { data: created, error } = await supabaseAdmin
       .from("live_rooms")
       .insert({

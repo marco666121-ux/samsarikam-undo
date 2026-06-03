@@ -203,26 +203,32 @@ export type Database = {
       ip_bindings: {
         Row: {
           first_seen: string
+          flagged: boolean
           identity_id: string
           ip_hash: string
           last_seen: string
           raw_ip: string | null
+          suspicion_score: number
           user_agent: string | null
         }
         Insert: {
           first_seen?: string
+          flagged?: boolean
           identity_id: string
           ip_hash: string
           last_seen?: string
           raw_ip?: string | null
+          suspicion_score?: number
           user_agent?: string | null
         }
         Update: {
           first_seen?: string
+          flagged?: boolean
           identity_id?: string
           ip_hash?: string
           last_seen?: string
           raw_ip?: string | null
+          suspicion_score?: number
           user_agent?: string | null
         }
         Relationships: [
@@ -359,6 +365,7 @@ export type Database = {
           anonymous: boolean
           author_id: string | null
           author_username: string
+          auto_hidden: boolean
           body: string | null
           comments_count: number
           community_slug: string
@@ -373,6 +380,7 @@ export type Database = {
           pinned: boolean
           poll: Json | null
           reactions: Json
+          report_count: number
           restored_at: string | null
           tags: string[] | null
           title: string
@@ -384,6 +392,7 @@ export type Database = {
           anonymous?: boolean
           author_id?: string | null
           author_username: string
+          auto_hidden?: boolean
           body?: string | null
           comments_count?: number
           community_slug: string
@@ -398,6 +407,7 @@ export type Database = {
           pinned?: boolean
           poll?: Json | null
           reactions?: Json
+          report_count?: number
           restored_at?: string | null
           tags?: string[] | null
           title: string
@@ -409,6 +419,7 @@ export type Database = {
           anonymous?: boolean
           author_id?: string | null
           author_username?: string
+          auto_hidden?: boolean
           body?: string | null
           comments_count?: number
           community_slug?: string
@@ -423,6 +434,7 @@ export type Database = {
           pinned?: boolean
           poll?: Json | null
           reactions?: Json
+          report_count?: number
           restored_at?: string | null
           tags?: string[] | null
           title?: string
@@ -470,6 +482,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_hash: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_hash: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_hash?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           created_at: string
@@ -505,6 +538,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reports: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          reason: string
+          reporter_id: string | null
+          reporter_ip_hash: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          reason: string
+          reporter_id?: string | null
+          reporter_ip_hash?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          reason?: string
+          reporter_id?: string | null
+          reporter_ip_hash?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      slug_aliases: {
+        Row: {
+          created_at: string
+          entity_type: string
+          id: string
+          new_slug: string
+          old_slug: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          id?: string
+          new_slug: string
+          old_slug: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          id?: string
+          new_slug?: string
+          old_slug?: string
+        }
+        Relationships: []
       }
       votes: {
         Row: {
