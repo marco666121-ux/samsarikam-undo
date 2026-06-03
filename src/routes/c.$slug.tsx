@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PostCard } from "@/components/post-card";
 import { COMMUNITIES, type Community } from "@/lib/mock-data";
@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 import { Bell, Settings, Users, Share2 } from "lucide-react";
 import { SITE_URL } from "@/lib/site";
 import { toast } from "sonner";
+import { resolveSlug } from "@/lib/slug-aliases.functions";
 
 export const Route = createFileRoute("/c/$slug")({
   head: ({ params }) => {
@@ -28,9 +29,17 @@ export const Route = createFileRoute("/c/$slug")({
       links: [{ rel: "canonical", href: url }],
     };
   },
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const c = COMMUNITIES.find((x) => x.slug === params.slug);
-    if (!c) throw notFound();
+    if (!c) {
+      try {
+        const { new_slug } = await resolveSlug({ data: { entity_type: "community", old_slug: params.slug } });
+        if (new_slug) throw redirect({ to: "/c/$slug", params: { slug: new_slug } });
+      } catch (e) {
+        if ((e as any)?.isRedirect) throw e;
+      }
+      throw notFound();
+    }
     return c;
   },
   component: CommunityPage,
