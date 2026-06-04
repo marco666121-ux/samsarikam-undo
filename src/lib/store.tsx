@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NOTIFICATIONS, type Comment, type Community, type Notification, type Post, type Reaction } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { whoami, claimUsername, ping } from "./auth.functions";
+import { linkSupabaseUser } from "./auth-link.functions";
 import {
   listFeed,
   listComments as listCommentsFn,
@@ -177,6 +178,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
+        // 1. If Supabase Auth has a live session, make sure the identity is linked.
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          try {
+            const { identity } = await linkSupabaseUser({ data: {} });
+            if (!cancelled) {
+              setState((s) => ({
+                ...s,
+                identity: { username: identity.username, ghost: false, id: identity.id },
+                needsUsername: false,
+                authReady: true,
+              }));
+            }
+          } catch (err) {
+            console.error("linkSupabaseUser failed", err);
+          }
+        }
+        // 2. Fall back to legacy cookie-based identity (existing users).
         const r = await whoami({ data: {} as any });
         if (cancelled) return;
         if (r.authenticated && r.identity) {
@@ -190,6 +209,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await refresh();
     })();
     return () => { cancelled = true; };
+  }, [refresh]);
+
+  // Re-link identity whenever Supabase Auth session changes (sign-in, sign-out, refresh).
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === "SIGNED_IN") {
+        try {
+          const { identity } = await linkSupabaseUser({ data: {} });
+          setState((s) => ({
+            ...s,
+            identity: { username: identity.username, ghost: false, id: identity.id },
+            needsUsername: false,
+            authReady: true,
+          }));
+          await refresh();
+        } catch (e) {
+          console.error("linkSupabaseUser on sign-in failed", e);
+        }
+      } else if (event === "SIGNED_OUT") {
+        setState((s) => ({ ...s, identity: { username: "Ghost", ghost: true }, needsUsername: true }));
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [refresh]);
 
   // Realtime subscription
