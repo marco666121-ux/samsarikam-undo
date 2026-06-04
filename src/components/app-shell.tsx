@@ -87,11 +87,11 @@ function TopBar({ onCompose }: { onCompose: () => void }) {
         </button>
         {identity.ghost || !identity.id ? (
           <Link
-            to="/profile"
-            className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-surface text-sm font-bold"
-            title="Profile"
+            to="/auth"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-surface-2"
+            title="Sign in"
           >
-            👻
+            Sign in
           </Link>
         ) : (
           <Link
