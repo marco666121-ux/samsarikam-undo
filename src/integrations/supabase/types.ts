@@ -172,29 +172,35 @@ export type Database = {
       }
       identities: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
           id: string
           is_banned: boolean
+          phone: string | null
           restored_at: string | null
           username: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
           is_banned?: boolean
+          phone?: string | null
           restored_at?: string | null
           username: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
           is_banned?: boolean
+          phone?: string | null
           restored_at?: string | null
           username?: string
         }
