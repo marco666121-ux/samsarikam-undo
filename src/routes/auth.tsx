@@ -183,12 +183,11 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
       const cred = await confirmationRef.current.confirm(otp);
       const idToken = await cred.user.getIdToken();
       // 2. Exchange the Firebase ID token for a Supabase session token.
-      const { email, tokenHash } = await exchangeFirebasePhoneToken({
+      const { tokenHash } = await exchangeFirebasePhoneToken({
         data: { idToken },
       });
       // 3. Redeem the token to actually sign in with Supabase.
       const { error } = await supabase.auth.verifyOtp({
-        email,
         token_hash: tokenHash,
         type: "magiclink",
       });
