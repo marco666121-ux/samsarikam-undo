@@ -5,6 +5,13 @@ import { ArrowLeft, Phone, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { linkSupabaseUser } from "@/lib/auth-link.functions";
+import { exchangeFirebasePhoneToken } from "@/lib/firebase-auth.functions";
+import { getFirebaseAuth } from "@/lib/firebase";
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+} from "firebase/auth";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/auth")({
