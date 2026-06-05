@@ -5,6 +5,13 @@ import { ArrowLeft, Phone, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { linkSupabaseUser } from "@/lib/auth-link.functions";
+import { exchangeFirebasePhoneToken } from "@/lib/firebase-auth.functions";
+import { getFirebaseAuth } from "@/lib/firebase";
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+} from "firebase/auth";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/auth")({
@@ -93,6 +100,21 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const verifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
+
+  // Tear down reCAPTCHA on unmount so it doesn't leak between mounts.
+  useEffect(() => {
+    return () => {
+      try {
+        verifierRef.current?.clear();
+      } catch {
+        // ignore
+      }
+      verifierRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -103,6 +125,17 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
   const e164 = "+91" + phone.replace(/\D/g, "").slice(0, 10);
   const phoneValid = /^\+91[0-9]{10}$/.test(e164);
 
+  const ensureVerifier = () => {
+    if (verifierRef.current) return verifierRef.current;
+    const auth = getFirebaseAuth();
+    const container = recaptchaRef.current;
+    if (!container) throw new Error("reCAPTCHA container missing");
+    verifierRef.current = new RecaptchaVerifier(auth, container, {
+      size: "invisible",
+    });
+    return verifierRef.current;
+  };
+
   const sendOtp = async () => {
     if (!phoneValid) {
       toast.error("Enter a valid 10-digit Indian mobile number");
@@ -110,16 +143,22 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
     }
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
-      if (error) throw error;
+      const auth = getFirebaseAuth();
+      const verifier = ensureVerifier();
+      const confirmation = await signInWithPhoneNumber(auth, e164, verifier);
+      confirmationRef.current = confirmation;
       setStep("otp");
       setCooldown(RESEND_SECONDS);
       toast.success(`OTP sent to ${e164}`);
     } catch (e: any) {
+      // Reset reCAPTCHA so the next attempt gets a fresh challenge.
+      try { verifierRef.current?.clear(); } catch {}
+      verifierRef.current = null;
       const msg = e?.message ?? "Could not send OTP";
-      // Friendly message when SMS provider isn't configured yet.
-      if (/sms|twilio|provider/i.test(msg)) {
-        toast.error("SMS provider not configured. Ask the admin to enable phone auth in backend settings.");
+      if (/auth\/invalid-app-credential|recaptcha/i.test(msg)) {
+        toast.error("reCAPTCHA failed. Refresh the page and try again.");
+      } else if (/auth\/too-many-requests/i.test(msg)) {
+        toast.error("Too many attempts. Try again in a few minutes.");
       } else {
         toast.error(msg);
       }
@@ -133,13 +172,36 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
       toast.error("Enter the 6-digit code");
       return;
     }
+    if (!confirmationRef.current) {
+      toast.error("Session expired. Request a new OTP.");
+      setStep("phone");
+      return;
+    }
     setBusy(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({ phone: e164, token: otp, type: "sms" });
+      // 1. Confirm the OTP with Firebase.
+      const cred = await confirmationRef.current.confirm(otp);
+      const idToken = await cred.user.getIdToken();
+      // 2. Exchange the Firebase ID token for a Supabase session token.
+      const { tokenHash } = await exchangeFirebasePhoneToken({
+        data: { idToken },
+      });
+      // 3. Redeem the token to actually sign in with Supabase.
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "magiclink",
+      });
       if (error) throw error;
       await onSignedIn();
     } catch (e: any) {
-      toast.error(e?.message ?? "Invalid or expired code");
+      const msg = e?.message ?? "Invalid or expired code";
+      if (/auth\/invalid-verification-code/i.test(msg)) {
+        toast.error("Wrong code. Double-check and try again.");
+      } else if (/auth\/code-expired/i.test(msg)) {
+        toast.error("Code expired. Request a new OTP.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusy(false);
     }
@@ -151,6 +213,8 @@ function PhoneOtpCard({ onSignedIn }: { onSignedIn: () => void | Promise<void> }
         <Phone className="h-4 w-4 text-primary" />
         Phone OTP
       </div>
+      {/* Invisible reCAPTCHA mount point (Firebase requirement). */}
+      <div ref={recaptchaRef} />
 
       {step === "phone" ? (
         <form
